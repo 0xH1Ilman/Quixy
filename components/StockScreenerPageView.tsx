@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import type { StockScreenerResult } from '../types';
 import { getFinancialResponse } from '../services/geminiService';
+import type { StockScreenerResult } from '../types';
 import StockScreenerView from './StockScreenerView';
 
 const StockScreenerPageView: React.FC = () => {
@@ -8,102 +8,92 @@ const StockScreenerPageView: React.FC = () => {
   const [results, setResults] = useState<StockScreenerResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const exampleQueries = [
+    "acciones de IA con un P/E bajo",
+    "empresas de energía renovable con buen crecimiento",
+    "acciones de dividendos estables en el sector salud",
+    "empresas tecnológicas infravaloradas con potencial a largo plazo"
+  ];
 
-  const performSearch = async (queryToSearch: string) => {
-    if (!queryToSearch) return;
-
+  const handleSearch = async (searchQuery: string) => {
+    if (!searchQuery) return;
     setIsLoading(true);
     setError(null);
     setResults(null);
-
     try {
-      const prompt = `Encuentra acciones que cumplan con los siguientes criterios: "${queryToSearch}". Incluye métricas clave y un gráfico de precios del último año para la acción encontrada.`;
-      const response = await getFinancialResponse(prompt);
-
+      const response = await getFinancialResponse(`Busca una acción que coincida con: "${searchQuery}".`);
       if (response.response_type === 'stock_screener' && response.screener_results) {
         setResults(response.screener_results);
       } else {
-        setError(response.conversational_response || `No se encontraron resultados para tu búsqueda. Intenta ser más específico.`);
+        setError(response.conversational_response || "No se pudo realizar la búsqueda con esos criterios.");
       }
     } catch (err) {
-      setError('Ocurrió un error al buscar los datos. Por favor, intenta de nuevo.');
+      setError("Ocurrió un error al usar el buscador. Por favor, intenta de nuevo.");
       console.error(err);
     } finally {
       setIsLoading(false);
     }
   };
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    performSearch(query.trim());
-  };
   
-  const exampleQueries = [
-      "acciones de IA infravaloradas",
-      "empresas de energía renovable con buen crecimiento",
-      "acciones con dividendos sólidos y baja volatilidad",
-      "tecnológicas de gran capitalización con potencial de subida"
-  ];
+  const handleFormSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    handleSearch(query);
+  };
 
   return (
-    <div className="p-6 overflow-y-auto h-full space-y-4">
-      <h1 className="text-3xl font-bold text-slate-200">Buscador de Acciones</h1>
-      <p className="text-muted-foreground">Describe los criterios de las acciones que buscas y Quixy las encontrará por ti.</p>
-      
-      <form onSubmit={handleSearch} className="flex flex-col sm:flex-row items-center gap-2 bg-card p-2 rounded-lg border border-border">
-        <input
-          type="text"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Ej: acciones de IA infravaloradas con bajo P/E..."
-          className="w-full bg-transparent text-slate-200 focus:outline-none placeholder-muted-foreground px-2 py-2 sm:py-0"
-          aria-label="Criterios de búsqueda"
-        />
-        <button
-          type="submit"
-          disabled={isLoading}
-          className="w-full sm:w-auto bg-primary text-primary-foreground font-bold py-2 px-4 rounded-md hover:bg-blue-500 transition-colors disabled:bg-slate-600 disabled:cursor-not-allowed"
-        >
-          {isLoading ? 'Buscando...' : 'Buscar'}
-        </button>
-      </form>
-
-      <div className="mt-4">
+    <div className="p-6 h-full flex flex-col">
+      <header className="mb-6">
+        <h2 className="text-2xl font-bold text-card-foreground">Buscador de Acciones con IA</h2>
+        <p className="text-muted-foreground">Describe qué tipo de acción buscas y Quixy la encontrará por ti.</p>
+        <form onSubmit={handleFormSubmit} className="flex items-center gap-2 mt-4">
+            <input
+                type="text"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Ej: 'Acciones de tecnología con bajo P/E...'"
+                className="w-full max-w-xl bg-card text-foreground rounded-lg p-2.5 border border-border focus:ring-2 focus:ring-primary focus:outline-none"
+            />
+            <button 
+                type="submit" 
+                className="bg-primary text-primary-foreground font-bold py-2.5 px-5 rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50"
+                disabled={isLoading || !query.trim()}
+            >
+                {isLoading ? 'Buscando...' : 'Buscar'}
+            </button>
+        </form>
+      </header>
+      <main className="flex-1 overflow-y-auto">
         {isLoading && (
-           <div className="flex items-center justify-center h-64 text-muted-foreground">
-            <div className="flex items-center space-x-2">
-              <svg className="animate-spin h-5 w-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-              <span>Analizando el mercado según tus criterios...</span>
-            </div>
-          </div>
-        )}
-        
-        {error && <div className="text-red-400 text-center bg-red-500/10 p-4 rounded-lg border border-red-500/20">{error}</div>}
-
-        {!isLoading && !error && results && (
-          <div className="animate-fadeIn">
-            <StockScreenerView results={results} />
-          </div>
-        )}
-
-        {!isLoading && !results && !error && (
-            <div className="flex flex-col items-center justify-center h-64 text-muted-foreground text-center border-2 border-dashed border-border rounded-lg p-4">
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+                <svg className="animate-spin h-8 w-8 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                 </svg>
-                <p className="font-semibold mb-2">Usa lenguaje natural para encontrar oportunidades de inversión.</p>
-                <div className="text-xs text-left space-y-1">
-                    <p><strong className="text-slate-400">Puedes probar con:</strong></p>
-                    <ul className="list-disc list-inside">
-                        {exampleQueries.map((ex, i) => <li key={i}>{ex}</li>)}
-                    </ul>
+                <p>Analizando el mercado...</p>
+            </div>
+        )}
+        {error && <div className="text-danger bg-danger/10 p-4 rounded-lg">{error}</div>}
+        {results && <StockScreenerView results={results} />}
+        {!isLoading && !results && !error && (
+             <div className="flex flex-col items-center justify-center h-full text-muted-foreground bg-card/30 rounded-xl border-2 border-dashed border-border">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                <p className="mb-4 text-lg font-semibold text-card-foreground">Los resultados del buscador aparecerán aquí.</p>
+                <p className="mb-4 text-sm">Prueba con una de estas ideas:</p>
+                <div className="flex flex-wrap justify-center gap-2 max-w-2xl">
+                    {exampleQueries.map(ex => (
+                        <button 
+                            key={ex} 
+                            onClick={() => { setQuery(ex); handleSearch(ex); }}
+                            className="bg-card/80 border border-border text-xs px-3 py-1.5 rounded-full hover:bg-muted hover:border-primary/50 transition-all"
+                        >
+                           {ex}
+                        </button>
+                    ))}
                 </div>
             </div>
         )}
-      </div>
+      </main>
     </div>
   );
 };

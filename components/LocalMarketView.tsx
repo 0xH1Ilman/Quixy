@@ -1,137 +1,127 @@
-import React from 'react';
-import type { LocalMarketResponse, IndexPerformance, LocalMarketMover, NewsArticle } from '../types';
+import React, { useEffect } from 'react';
+import type { LocalMarketResponse, LocalMarketMover, IndexPerformance, NewsArticle } from '../types';
 import { useDataContext } from '../contexts/DataContext';
 
-const getSentimentColor = (sentiment: string) => {
-    switch (sentiment?.toLowerCase()) {
-        case 'positivo':
-        case 'alcista': 
-            return 'text-success';
-        case 'negativo':
-        case 'bajista':
-            return 'text-danger';
-        default: return 'text-yellow-400';
-    }
-};
-
 const getChangeColor = (change: string) => {
-    if (!change) return 'text-muted-foreground';
-    if (change.startsWith('+') || !change.startsWith('-')) return 'text-success';
+    if (change.startsWith('+')) return 'text-success';
     if (change.startsWith('-')) return 'text-danger';
     return 'text-muted-foreground';
 };
 
-const NewsPlaceholder = () => (
-    <div className="h-14 w-14 flex items-center justify-center bg-muted rounded-md shrink-0">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 12h6m-1 8h.01" />
-        </svg>
+const getSentimentColor = (sentiment: string) => {
+    switch (sentiment?.toLowerCase()) {
+        case 'positivo': return 'bg-success/20 text-success';
+        case 'negativo': return 'bg-danger/20 text-danger';
+        default: return 'bg-yellow-400/20 text-yellow-400';
+    }
+};
+
+const ColcapCard: React.FC<{ data: IndexPerformance }> = ({ data }) => (
+    <div className="bg-card/80 border border-border/80 p-6 rounded-xl text-center">
+        <p className="text-lg font-semibold text-primary">{data.index_name}</p>
+        <p className="text-5xl font-bold mt-2 text-card-foreground">{data.value}</p>
+        <p className={`text-xl font-semibold mt-2 ${getChangeColor(data.change_percentage)}`}>
+            {data.change} ({data.change_percentage})
+        </p>
     </div>
 );
 
+const KeyStockCard: React.FC<{ stock: LocalMarketMover }> = ({ stock }) => (
+    <div className="bg-background/60 p-4 rounded-lg border border-border/50 flex justify-between items-center">
+        <div>
+            <p className="font-bold text-card-foreground">{stock.company_name}</p>
+            <p className="text-sm font-mono text-primary">{stock.ticker}</p>
+        </div>
+        <div className="text-right">
+            <p className="font-mono font-semibold text-card-foreground">{stock.price}</p>
+            <p className={`font-mono text-sm ${getChangeColor(stock.change_percentage)}`}>{stock.change_percentage}</p>
+        </div>
+    </div>
+);
+
+const ArticleItem: React.FC<{ article: NewsArticle }> = ({ article }) => (
+      <a href={article.uri} target="_blank" rel="noopener noreferrer" className="block p-3 rounded-lg hover:bg-muted/50 transition-colors">
+          <p className="font-semibold text-primary text-sm">{article.title}</p>
+          <p className="text-xs text-muted-foreground">{article.source}</p>
+      </a>
+);
+
 const LocalMarketView: React.FC = () => {
-    const { appData, refreshView, loadingStates } = useDataContext();
-    const localMarketData = appData.localMarket;
+    const { appData, loadingStates, refreshView } = useDataContext();
+    const data = appData.localMarket;
     const isLoading = loadingStates.local_market;
-
-    if (isLoading && !localMarketData) {
-        return (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-                <span>Cargando datos del mercado colombiano...</span>
-            </div>
-        );
-    }
     
-    if (!localMarketData) {
-        return (
-            <div className="p-6 flex items-center justify-center h-full text-muted-foreground text-center">
-                <div>
-                    <h2 className="text-2xl font-bold mb-2">Mercado Local (Colombia)</h2>
-                    <p>No se pudieron cargar los datos. Intenta de nuevo.</p>
-                    <button onClick={() => refreshView('local_market')} className="mt-4 bg-primary text-primary-foreground font-bold py-2 px-4 rounded-md">
-                        Refrescar
-                    </button>
-                </div>
-            </div>
-        );
+    useEffect(() => {
+        if (!data) {
+            refreshView('local_market');
+        }
+    }, [data, refreshView]);
+
+    const handleRefresh = () => {
+        refreshView('local_market');
+    };
+
+    if (isLoading && !data) {
+        return <div className="flex items-center justify-center h-full text-muted-foreground">Cargando resumen del mercado local...</div>;
     }
 
-    const { summary } = localMarketData;
-    const { market_sentiment, summary_text, colcap_performance, key_stocks, news } = summary;
+    if (!data?.summary) {
+        return <div className="flex items-center justify-center h-full text-muted-foreground">No hay datos del mercado local disponibles.</div>;
+    }
+
+    const { summary } = data;
 
     return (
-        <div className="p-6 overflow-y-auto h-full space-y-6">
-            <div className="flex justify-between items-center">
-                <h1 className="text-3xl font-bold text-slate-200">Mercado Local: Colombia</h1>
-                <button
-                    onClick={() => refreshView('local_market')}
-                    disabled={isLoading}
-                    className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 disabled:opacity-50"
-                >
-                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5M20 20v-5h-5M4 4l16 16" />
-                    </svg>
-                    {isLoading ? 'Cargando...' : 'Refrescar'}
-                </button>
-            </div>
-
-            <div className="bg-card border border-border p-5 rounded-lg animate-fadeIn">
-                <p className="text-sm text-muted-foreground">Sentimiento del Mercado: <span className={`font-bold ${getSentimentColor(market_sentiment || '')}`}>{market_sentiment}</span></p>
-                <p className="text-slate-300 mt-2 leading-relaxed">{summary_text}</p>
-            </div>
-            
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div className="lg:col-span-1">
-                    <div className="bg-card border border-border p-5 rounded-lg text-center">
-                        <h3 className="font-semibold text-card-foreground">{colcap_performance.index_name}</h3>
-                        <p className="text-4xl font-bold text-slate-200 mt-2">{colcap_performance.value}</p>
-                        <p className={`text-lg font-semibold ${getChangeColor(colcap_performance.change)}`}>
-                            {colcap_performance.change} ({colcap_performance.change_percentage})
-                        </p>
-                    </div>
+        <div className="p-6">
+             <header className="flex justify-between items-center mb-6">
+                <div>
+                    <h2 className="text-2xl font-bold text-card-foreground">Mercado Local (Colombia)</h2>
+                    <p className="text-muted-foreground">Análisis enfocado en el mercado de valores colombiano.</p>
                 </div>
-                <div className="lg:col-span-2">
-                    <div className="bg-card border border-border p-5 rounded-lg h-full">
-                        <h3 className="font-semibold text-card-foreground mb-3">Acciones Clave</h3>
-                        <div className="space-y-2">
-                            {key_stocks.map((stock) => (
-                                <div key={stock.ticker} className="flex justify-between items-center p-2 rounded-md hover:bg-muted/50">
-                                    <div>
-                                        <p className="font-bold text-sm text-slate-200">{stock.ticker}</p>
-                                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">{stock.company_name}</p>
-                                    </div>
-                                    <div className="text-right">
-                                        <p className="font-mono text-sm font-semibold text-slate-300">{stock.price}</p>
-                                        <p className={`text-xs font-mono ${getChangeColor(stock.change_percentage)}`}>{stock.change_percentage}</p>
-                                    </div>
-                                </div>
-                            ))}
+                 <button
+                    onClick={handleRefresh}
+                    disabled={isLoading}
+                    className="bg-secondary text-secondary-foreground hover:bg-muted px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 flex items-center gap-2"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h5M20 20v-5h-5M4 4l16 16" /></svg>
+                    {isLoading ? 'Actualizando...' : 'Actualizar'}
+                </button>
+            </header>
+            
+            <div className="space-y-6 animate-fadeIn">
+                 {data.conversational_response && <p className="text-lg text-muted-foreground px-1">{data.conversational_response}</p>}
+                
+                <div className="bg-card border border-border p-5 rounded-xl">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-xl font-bold text-card-foreground">Sentimiento del Mercado</h3>
+                        <span className={`px-3 py-1 text-sm font-bold rounded-full ${getSentimentColor(summary.market_sentiment)}`}>
+                            {summary.market_sentiment}
+                        </span>
+                    </div>
+                    <p className="text-muted-foreground mt-2 text-sm">{summary.summary_text}</p>
+                </div>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1">
+                        <ColcapCard data={summary.colcap_performance} />
+                    </div>
+                    <div className="lg:col-span-2 bg-card/80 border border-border p-5 rounded-xl">
+                        <h3 className="font-bold mb-4 text-card-foreground">Acciones Clave</h3>
+                        <div className="space-y-3">
+                            {summary.key_stocks.map(stock => <KeyStockCard key={stock.ticker} stock={stock} />)}
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div>
-                 <h2 className="text-2xl font-bold text-slate-200 mb-4">Noticias de Colombia</h2>
-                 <div className="bg-card border border-border p-5 rounded-lg">
-                    <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2">
-                        {news?.map((item, index) => (
-                            <a href={item.uri} target="_blank" rel="noopener noreferrer" key={index} className="flex gap-4 items-start hover:bg-muted/50 p-2 rounded-md transition-colors">
-                                {item.image_url ? 
-                                    <img src={item.image_url} alt={item.title} className="h-20 w-20 object-cover rounded-md bg-muted shrink-0" />
-                                    : <NewsPlaceholder />
-                                }
-                                <div className="flex-1">
-                                    <p className="font-semibold text-md leading-tight text-slate-200">{item.title}</p>
-                                    <p className="text-xs text-primary font-semibold mt-1">{item.source}</p>
-                                    <p className="text-sm text-muted-foreground mt-2">{item.summary}</p>
-                                </div>
-                            </a>
-                        ))}
+                {summary.news && summary.news.length > 0 && (
+                     <div className="bg-card border border-border p-5 rounded-xl">
+                        <h3 className="text-xl font-semibold mb-2 text-card-foreground">Noticias Locales Relevantes</h3>
+                        <div className="space-y-1 max-h-80 overflow-y-auto">
+                            {summary.news.map((item, index) => <ArticleItem key={index} article={item} />)}
+                        </div>
                     </div>
-                 </div>
+                )}
             </div>
-
         </div>
     );
 };

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect, useMemo, useCallback } from 'react';
-import type { Message, Portfolio, MarketSummary, SectorPerformanceResponse, EconomicIndicatorsResponse, ApiResponse, IndexPerformance, NewsArticle, LocalMarketResponse } from '../types';
+import type { Message, Portfolio, MarketSummary, CommoditiesForexResponse, EconomicIndicatorsResponse, ApiResponse, IndexPerformance, NewsArticle, LocalMarketResponse } from '../types';
 import { getFinancialResponse } from '../services/geminiService';
 
 interface AppData {
@@ -7,16 +7,17 @@ interface AppData {
     portfolios: Portfolio[];
     marketSummary: MarketSummary | null;
     indexPerformance: IndexPerformance[] | null;
-    sectorPerformance: SectorPerformanceResponse | null;
+    commoditiesForex: CommoditiesForexResponse | null;
     economicIndicators: EconomicIndicatorsResponse | null;
     news: NewsArticle[] | null;
     localMarket: LocalMarketResponse | null;
+    tickerTape: string[];
 }
 
 interface LoadingStates {
     market: boolean;
     ticker: boolean;
-    sectors: boolean;
+    commodities_forex: boolean;
     indicators: boolean;
     news: boolean;
     local_market: boolean;
@@ -30,8 +31,9 @@ interface DataContextType {
     portfolios: Portfolio[];
     savePortfolio: (portfolio: Omit<Portfolio, 'id' | 'created_at'>, name: string) => void;
     deletePortfolio: (id: string) => void;
-    refreshView: (view: 'market' | 'sectors' | 'indicators' | 'news' | 'local_market') => Promise<void>;
+    refreshView: (view: 'market' | 'commodities_forex' | 'indicators' | 'news' | 'local_market') => Promise<void>;
     loadingStates: LoadingStates;
+    setTickerTape: (tickers: string[]) => void;
 }
 
 const DataContext = createContext<DataContextType | undefined>(undefined);
@@ -42,23 +44,24 @@ const initialAppData: AppData = {
             sender: 'bot',
             analysis: {
                 response_type: 'general_text',
-                conversational_response: "¡Hola! Soy Quixy, tu asistente financiero. ¿Cómo puedo ayudarte hoy? Puedes preguntar sobre una acción como '¿Cómo está TSLA?' o 'Dame un análisis de Apple'. También puedes pedirme que cree un portafolio o que busque acciones por ti.",
+                conversational_response: "¡Hola! Soy Quixy, tu asistente financiero de BrightStone Finance. ¿Cómo puedo ayudarte hoy? Puedes preguntar sobre una acción como '¿Cómo está TSLA?' o 'Dame un análisis de Apple'. También puedes pedirme que cree un portafolio o que busque acciones por ti.",
             }
         },
     ],
     portfolios: [],
     marketSummary: null,
     indexPerformance: null,
-    sectorPerformance: null,
+    commoditiesForex: null,
     economicIndicators: null,
     news: null,
     localMarket: null,
+    tickerTape: ['QQQ', 'VOO', 'ARKK', 'BTC-USD', 'COLCAP', 'NVDA', 'GOOGL', 'TTWO'],
 };
 
 export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [appData, setAppData] = useState<AppData>(() => {
         try {
-            const savedData = localStorage.getItem('quixyAppData');
+            const savedData = localStorage.getItem('brightstoneFinanceAppData');
             if (savedData) {
                 const parsed = JSON.parse(savedData);
                 // Ensure chat history is not empty
@@ -76,34 +79,44 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [loadingStates, setLoadingStates] = useState<LoadingStates>({
         market: false,
         ticker: false,
-        sectors: false,
+        commodities_forex: false,
         indicators: false,
         news: false,
         local_market: false,
     });
     
     useEffect(() => {
-        localStorage.setItem('quixyAppData', JSON.stringify(appData));
+        localStorage.setItem('brightstoneFinanceAppData', JSON.stringify(appData));
     }, [appData]);
 
+    const setTickerTape = (tickers: string[]) => {
+        setAppData(prev => ({ ...prev, tickerTape: tickers, indexPerformance: null }));
+    };
+
     const fetchTickerData = useCallback(async () => {
-        // Fetches only if not already loaded
-        if (appData.indexPerformance) return;
+        if (appData.tickerTape.length === 0) {
+            setAppData(prev => ({...prev, indexPerformance: []}));
+            return;
+        }
+
         setLoadingStates(prev => ({ ...prev, ticker: true }));
         try {
-            const prompt = "Dame el estado actual de los índices S&P 500, NASDAQ, Dow Jones, COLCAP y los tickers BTC, ARKK, TQQQ, ASML, NVDA, GOOGL, EC, AAPL, JPM, y las 10 acciones estadounidenses más grandes.";
+            const prompt = `Para cada uno de los siguientes tickers: ${appData.tickerTape.join(', ')}, provéeme su precio actual, el cambio del día y el cambio porcentual. Formatea cada uno como un objeto en la lista 'index_performance' de un 'market_summary'. Usa el ticker como 'index_name'. Asegúrate que los datos son reales y están actualizados.`;
             const res = await getFinancialResponse(prompt);
             if (res.response_type === 'market_summary' && res.market_summary?.index_performance) {
                 setAppData(prev => ({...prev, indexPerformance: res.market_summary.index_performance}));
+            } else {
+                 console.warn("Ticker data could not be retrieved as market_summary", res);
+                 setAppData(prev => ({...prev, indexPerformance: []}));
             }
         } catch (error) {
              console.error(`Failed to refresh ticker:`, error);
         } finally {
             setLoadingStates(prev => ({ ...prev, ticker: false }));
         }
-    }, [appData.indexPerformance]);
+    }, [appData.tickerTape]);
 
-    const refreshView = useCallback(async (view: 'market' | 'sectors' | 'indicators' | 'news' | 'local_market') => {
+    const refreshView = useCallback(async (view: 'market' | 'commodities_forex' | 'indicators' | 'news' | 'local_market') => {
         setLoadingStates(prev => ({ ...prev, [view]: true }));
         try {
             let prompt = '';
@@ -116,10 +129,10 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     response_type = 'market_summary';
                     dataKey = 'marketSummary';
                     break;
-                case 'sectors':
-                    prompt = "Dame el rendimiento de los sectores del S&P 500 en la última semana.";
-                    response_type = 'sector_performance';
-                    dataKey = 'sectorPerformance';
+                case 'commodities_forex':
+                    prompt = "Dame el estado actual de las principales materias primas (Oro, Plata, Petróleo WTI, Petróleo Brent) y los pares de divisas más importantes (EUR/USD, USD/JPY, GBP/USD, USD/CAD, AUD/USD, USD/CNY).";
+                    response_type = 'commodities_forex';
+                    dataKey = 'commoditiesForex';
                     break;
                 case 'indicators':
                     prompt = "Dame los principales indicadores económicos de Estados Unidos (inflación, desempleo, tasas de interés, etc.)";
@@ -158,12 +171,15 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setLoadingStates(prev => ({ ...prev, [view]: false }));
         }
     }, []);
+    
+    useEffect(() => {
+        fetchTickerData();
+    }, [fetchTickerData]);
 
     useEffect(() => {
         const loadInitialData = () => {
-            fetchTickerData();
             if (!appData.marketSummary) refreshView('market');
-            if (!appData.sectorPerformance) refreshView('sectors');
+            if (!appData.commoditiesForex) refreshView('commodities_forex');
             if (!appData.economicIndicators) refreshView('indicators');
             if (!appData.news) refreshView('news');
             if (!appData.localMarket) refreshView('local_market');
@@ -200,6 +216,7 @@ export const DataProvider: React.FC<{ children: React.ReactNode }> = ({ children
         deletePortfolio,
         refreshView,
         loadingStates,
+        setTickerTape,
     }), [appData, loadingStates, refreshView]);
 
     return (

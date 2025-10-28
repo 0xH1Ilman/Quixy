@@ -3,9 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Quixy Beta</title>
+  <title>BrightStone Finance</title>
   
   <script src="https://cdn.tailwindcss.com"></script>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   
   <script type="importmap">
   {
@@ -24,6 +28,9 @@
       darkMode: 'class',
       theme: {
         extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
           colors: {
             border: 'hsl(var(--border))',
             input: 'hsl(var(--input))',
@@ -78,69 +85,69 @@
   <style type="text/tailwindcss">
     @layer base {
       :root, .dark {
-        --background: 224 71% 4%; /* #0B1120 */
-        --foreground: 210 40% 98%; /* #F8FAFC */
-        --card: 224 44% 14%; /* #161e31 */
-        --card-foreground: 210 40% 98%;
-        --popover: 224 71% 4%;
+        --background: 222 47% 11%; /* #111827 - Slate 900 */
+        --foreground: 215 20% 65%; /* #A1A1AA - Zinc 400 */
+        --card: 222 47% 15%; /* #1A2233 */
+        --card-foreground: 210 40% 98%; /* #F8FAFC - Slate 50 */
+        --popover: 222 47% 11%;
         --popover-foreground: 210 40% 98%;
-        --primary: 221 83% 53%; /* #3b82f6 */
+        --primary: 217 91% 60%; /* #3B82F6 - Blue 500 */
         --primary-foreground: 210 40% 98%;
-        --secondary: 220 13% 24%; /* #374151 */
+        --secondary: 222 47% 25%; /* #334155 - Slate 700 */
         --secondary-foreground: 210 40% 98%;
-        --muted: 220 13% 24%;
-        --muted-foreground: 215 14% 65%; /* #9CA3AF */
-        --accent: 220 18% 18%; /* #1F2937 */
+        --muted: 222 47% 20%; /* #263143 */
+        --muted-foreground: 215 28% 45%; /* #64748B - Slate 500 */
+        --accent: 222 47% 20%;
         --accent-foreground: 210 40% 98%;
         --destructive: 0 84% 60%;
-        --border: 220 13% 24%;
-        --input: 220 18% 18%;
-        --ring: 221 83% 53%;
-        --success: 145 63% 42%; /* #22c55e */
-        --danger: 0 84% 60%; /* #ef4444 */
+        --border: 222 47% 20%;
+        --input: 222 47% 18%; /* #222C3E */
+        --ring: 217 91% 60%;
+        --success: 142 71% 45%; /* #22C55E - Green 500 */
+        --danger: 0 84% 60%; /* #EF4444 - Red 500 */
       }
       
       .light {
-        --background: 240 5% 96%; /* #F2F2F7 */
-        --foreground: 240 10% 4%; /* #09090B */
-        --card: 240 4% 100%; /* #FFFFFF */
-        --card-foreground: 240 10% 4%;
-        --popover: 240 4% 100%;
-        --popover-foreground: 240 10% 4%;
-        --primary: 221 83% 53%;
+        --background: 210 40% 98%; /* #F8FAFC - Slate 50 */
+        --foreground: 222 47% 11%; /* #111827 - Slate 900 */
+        --card: 0 0% 100%; /* #FFFFFF */
+        --card-foreground: 222 47% 11%;
+        --popover: 0 0% 100%;
+        --popover-foreground: 222 47% 11%;
+        --primary: 217 91% 60%;
         --primary-foreground: 210 40% 98%;
-        --secondary: 240 5% 90%; /* #E4E4E7 */
-        --secondary-foreground: 240 6% 10%;
-        --muted: 240 5% 90%;
-        --muted-foreground: 240 4% 46%;
-        --accent: 240 5% 90%;
-        --accent-foreground: 240 6% 10%;
+        --secondary: 210 40% 96%; /* #F1F5F9 - Slate 100 */
+        --secondary-foreground: 222 47% 11%;
+        --muted: 210 40% 90%; /* #E2E8F0 - Slate 200 */
+        --muted-foreground: 215 28% 45%; /* #64748B - Slate 500 */
+        --accent: 210 40% 90%;
+        --accent-foreground: 222 47% 11%;
         --destructive: 0 84% 60%;
-        --border: 240 6% 89%; /* #E2E2E2 */
-        --input: 240 6% 89%;
-        --ring: 221 83% 53%;
-        --success: 145 63% 42%;
+        --border: 210 40% 88%; /* #DCE1E7 */
+        --input: 210 40% 94%; /* #E8ECF2 */
+        --ring: 217 91% 60%;
+        --success: 142 71% 45%;
         --danger: 0 84% 60%;
       }
 
       .high-contrast {
         --background: 0 0% 0%; /* #000000 */
         --foreground: 0 0% 100%; /* #FFFFFF */
-        --card: 0 0% 10%; /* #1A1A1A */
+        --card: 0 0% 0%;
         --card-foreground: 0 0% 100%;
         --popover: 0 0% 0%;
         --popover-foreground: 0 0% 100%;
         --primary: 60 100% 50%; /* #FFFF00 */
         --primary-foreground: 0 0% 0%;
-        --secondary: 0 0% 20%; /* #333333 */
+        --secondary: 0 0% 15%; /* #262626 */
         --secondary-foreground: 0 0% 100%;
-        --muted: 0 0% 20%;
-        --muted-foreground: 0 0% 70%;
-        --accent: 0 0% 20%;
+        --muted: 0 0% 15%;
+        --muted-foreground: 0 0% 80%;
+        --accent: 0 0% 15%;
         --accent-foreground: 0 0% 100%;
         --destructive: 340 100% 50%; /* #FF004D */
-        --border: 0 0% 50%; /* #808080 */
-        --input: 0 0% 20%;
+        --border: 0 0% 40%; /* #666666 */
+        --input: 0 0% 10%; /* #1A1A1A */
         --ring: 60 100% 50%;
         --success: 120 100% 50%; /* #00FF00 */
         --danger: 340 100% 50%;
@@ -153,12 +160,14 @@
       }
       body {
         @apply bg-background text-foreground;
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+        font-family: 'Inter', sans-serif;
       }
       html, body, #root {
         height: 100%;
         margin: 0;
         padding: 0;
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
     }
     
@@ -173,7 +182,7 @@
         @keyframes slideUpAndFadeIn {
           from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(10px);
           }
           to {
             opacity: 1;
@@ -181,7 +190,7 @@
           }
         }
         .animate-slideUpAndFadeIn {
-            animation: slideUpAndFadeIn 0.8s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+            animation: slideUpAndFadeIn 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
         }
     }
 

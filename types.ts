@@ -1,6 +1,6 @@
 import type { ReactElement } from "react";
 
-export type View = 'chat' | 'portfolio' | 'market' | 'charts' | 'indicators' | 'sectors' | 'screener' | 'news' | 'local_market';
+export type View = 'chat' | 'portfolio' | 'market' | 'charts' | 'indicators' | 'commodities_forex' | 'screener' | 'news' | 'local_market' | 'settings';
 
 export interface NavItemProps {
   icon: ReactElement;
@@ -86,6 +86,18 @@ export interface Portfolio {
     strategy_rationale: string;
     assets?: PortfolioAsset[];
     conversational_response?: string;
+    estimated_annual_return?: string;
+    historical_performance?: {
+        one_year: string;
+        three_year_annualized: string;
+        five_year_annualized: string;
+    };
+    risk_analysis?: {
+        beta: string;
+        standard_deviation: string;
+        summary: string;
+    };
+    charts?: Chart[];
 }
 
 export interface IndexPerformance {
@@ -176,34 +188,37 @@ export interface EconomicIndicatorsResponse {
     conversational_response?: string;
 }
 
-export interface LeadingStock {
-    ticker: string;
+export interface Commodity {
+    name: string;
+    price: string;
     change: string;
+    change_percentage: string;
+    unit: string;
 }
 
-export interface SectorPerformance {
-    sector_name: string;
-    performance_percentage: number;
-    rationale: string;
-    leading_stocks: LeadingStock[];
+export interface ForexPair {
+    pair: string;
+    rate: string;
+    change: string;
+    change_percentage: string;
 }
 
-export interface SectorPerformanceResponse {
-    time_period: string;
+export interface CommoditiesForexResponse {
     summary: string;
-    performance_data?: SectorPerformance[];
+    commodities?: Commodity[];
+    forex_pairs?: ForexPair[];
     conversational_response?: string;
 }
 
 export interface ApiResponse {
-  response_type: 'stock_analysis' | 'portfolio_creation' | 'market_summary' | 'stock_screener' | 'economic_indicators' | 'sector_performance' | 'local_market_summary' | 'news' | 'general_text';
+  response_type: 'stock_analysis' | 'portfolio_creation' | 'market_summary' | 'stock_screener' | 'economic_indicators' | 'commodities_forex' | 'local_market_summary' | 'news' | 'general_text';
   conversational_response: string;
   stock_analysis?: StockAnalysis;
   portfolio_details?: Portfolio;
   market_summary?: MarketSummary;
   screener_results?: StockScreenerResult;
   economic_indicators?: EconomicIndicatorsResponse;
-  sector_performance?: SectorPerformanceResponse;
+  commodities_forex?: CommoditiesForexResponse;
   local_market_summary?: LocalMarketResponse;
   charts?: Chart[];
   news?: NewsArticle[];

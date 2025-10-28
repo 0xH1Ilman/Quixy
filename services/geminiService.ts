@@ -47,8 +47,8 @@ export async function getFinancialResponse(prompt: string): Promise<ApiResponse>
         if (parsedJson.economic_indicators) {
             parsedJson.economic_indicators.conversational_response = parsedJson.conversational_response;
         }
-        if (parsedJson.sector_performance) {
-            parsedJson.sector_performance.conversational_response = parsedJson.conversational_response;
+        if (parsedJson.commodities_forex) {
+            parsedJson.commodities_forex.conversational_response = parsedJson.conversational_response;
         }
     }
 

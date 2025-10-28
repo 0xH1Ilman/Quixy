@@ -33,10 +33,7 @@ const Chatbot: React.FC = () => {
     if (input.trim() === '') return;
 
     const userMessage: MessageType = { sender: 'user', text: input };
-    // Fix: Explicitly type the loading message object to ensure the array type is `MessageType[]`, resolving the type error where `sender` was inferred as `string` instead of `"bot" | "user"`.
     const loadingMessage: MessageType = { sender: 'bot', isLoading: true };
-    // Fix: The DataContext's `setChatHistory` expects a Message[] array, not a function.
-    // Stored the new state in a local variable to prevent stale closures after the await call.
     const historyWithLoading = [...chatHistory, userMessage, loadingMessage];
     setChatHistory(historyWithLoading);
     setInput('');
@@ -47,7 +44,6 @@ const Chatbot: React.FC = () => {
         sender: 'bot',
         analysis: analysis,
       };
-      // Fix: Replaced functional update, using the local variable `historyWithLoading` to build the new state.
       const finalHistory = [...historyWithLoading];
       finalHistory[finalHistory.length - 1] = botMessage;
       setChatHistory(finalHistory);
@@ -61,7 +57,6 @@ const Chatbot: React.FC = () => {
         sender: 'bot',
         analysis: errorResponse,
       };
-      // Fix: Replaced functional update, using the local variable `historyWithLoading` to build the new state.
        const historyWithError = [...historyWithLoading];
        historyWithError[historyWithError.length - 1] = errorMessage;
        setChatHistory(historyWithError);
@@ -76,11 +71,11 @@ const Chatbot: React.FC = () => {
 
   return (
     <div className="flex flex-col h-full bg-background">
-      <header className="flex justify-between items-center p-4 border-b border-border">
-          <h2 className="text-lg font-semibold text-slate-200">Chat de Análisis</h2>
+      <header className="flex justify-between items-center p-4 border-b border-border flex-shrink-0">
+          <h2 className="text-lg font-semibold text-card-foreground">Chat de Análisis</h2>
           <button
               onClick={handleClearChat}
-              className="text-xs text-muted-foreground hover:text-primary transition-colors flex items-center gap-1"
+              className="text-sm text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5"
               aria-label="Limpiar historial del chat"
           >
              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -95,7 +90,7 @@ const Chatbot: React.FC = () => {
         ))}
         <div ref={messagesEndRef} />
       </div>
-      <div className="p-4 bg-background/80 backdrop-blur-sm border-t border-border">
+      <div className="p-4 bg-background/80 backdrop-blur-sm border-t border-border mt-auto">
         <div className="relative">
           <input
             type="text"
@@ -103,11 +98,11 @@ const Chatbot: React.FC = () => {
             onChange={e => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
             placeholder="Escribe tu pregunta financiera aquí..."
-            className="w-full bg-card text-foreground rounded-full py-3 pl-5 pr-14 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            className="w-full bg-card text-foreground rounded-full py-3 pl-5 pr-16 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-shadow"
           />
           <button
             onClick={handleSend}
-            className="absolute right-2 top-1/2 -translate-y-1/2 bg-secondary text-secondary-foreground rounded-full h-10 w-10 flex items-center justify-center hover:bg-muted transition-colors disabled:opacity-50"
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-primary-foreground rounded-full h-10 w-10 flex items-center justify-center hover:bg-blue-500 transition-all duration-200 disabled:opacity-50 disabled:scale-95 transform active:scale-90"
             disabled={!input.trim()}
             aria-label="Enviar mensaje"
           >

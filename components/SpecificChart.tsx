@@ -18,6 +18,7 @@ import {
   Bar,
   Line,
   Brush,
+  Cell
 } from 'recharts';
 import type { Chart } from '../types';
 
@@ -86,13 +87,22 @@ const SpecificChart: React.FC<SpecificChartProps> = ({ chart }) => {
     if (active && payload && payload.length) {
       return (
         <div className="bg-popover text-popover-foreground p-3 border border-border rounded-lg shadow-lg">
-          <p className="font-bold mb-2">{label}</p>
-          {payload.map((pld: any, index: number) => (
-            <div key={index} className="text-sm flex justify-between items-center" style={{ color: pld.color }}>
-              <span className="mr-2">{`${pld.name}:`}</span>
-              <span className="font-mono font-bold">{pld.name.toLowerCase() === 'precio' ? `$${pld.value.toFixed(2)}` : formatLargeNumber(pld.value)}</span>
-            </div>
-          ))}
+          <p className="font-bold mb-2 text-sm">{label}</p>
+          {payload.map((pld: any, index: number) => {
+            const numericValue = Number(pld.value);
+            return (
+              <div key={index} className="text-sm flex justify-between items-center" style={{ color: pld.color }}>
+                <span className="mr-4">{`${pld.name}:`}</span>
+                <span className="font-mono font-bold">
+                  {pld.name.toLowerCase() === 'precio'
+                    ? !isNaN(numericValue)
+                      ? `$${numericValue.toFixed(2)}`
+                      : pld.value
+                    : formatLargeNumber(pld.value)}
+                </span>
+              </div>
+            );
+          })}
         </div>
       );
     }
@@ -110,22 +120,22 @@ const SpecificChart: React.FC<SpecificChartProps> = ({ chart }) => {
         return (
           <ComposedChart data={chartData}>
             <defs>
-              <linearGradient id={`colorGradient-${priceKey.color}`} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor={priceKey.color} stopOpacity={0.4}/>
-                <stop offset="95%" stopColor={priceKey.color} stopOpacity={0}/>
+              <linearGradient id={`colorGradient-price`} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.4}/>
+                <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0}/>
               </linearGradient>
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-            <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} tick={{ fill: 'var(--muted-foreground)' }} />
-            <YAxis yAxisId="price" stroke={priceKey.color} fontSize={12} tick={{ fill: priceKey.color }} domain={yAxisPriceDomain} orientation="left" tickFormatter={(value) => `$${Number(value).toFixed(2)}`} />
-            <YAxis yAxisId="volume" stroke={volumeKey.color} fontSize={12} tick={{ fill: volumeKey.color }} orientation="right" tickFormatter={formatLargeNumber} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+            <YAxis yAxisId="price" stroke="hsl(var(--primary))" fontSize={12} tick={{ fill: 'hsl(var(--primary))' }} domain={yAxisPriceDomain} orientation="left" tickFormatter={(value) => `$${Number(value).toFixed(2)}`} />
+            <YAxis yAxisId="volume" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={{ fill: 'hsl(var(--muted-foreground))' }} orientation="right" tickFormatter={formatLargeNumber} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend wrapperStyle={{fontSize: "12px", color: 'var(--muted-foreground)'}} />
-            <Area yAxisId="price" type="monotone" dataKey={priceKey.key} name={priceKey.name} stroke={priceKey.color} strokeWidth={2} dot={false} fillOpacity={1} fill={`url(#colorGradient-${priceKey.color})`} />
-            <Bar yAxisId="volume" dataKey={volumeKey.key} name={volumeKey.name} fill={volumeKey.color} barSize={20} fillOpacity={0.5} />
-            <Brush dataKey="name" height={25} stroke={priceKey.color} fill="var(--background)" travellerWidth={15}>
+            <Legend wrapperStyle={{fontSize: "12px", color: 'hsl(var(--muted-foreground))'}} />
+            <Area yAxisId="price" type="monotone" dataKey={priceKey.key} name={priceKey.name} stroke="hsl(var(--primary))" strokeWidth={2} dot={false} fillOpacity={1} fill={`url(#colorGradient-price)`} />
+            <Bar yAxisId="volume" dataKey={volumeKey.key} name={volumeKey.name} fill="hsl(var(--secondary))" barSize={20} fillOpacity={0.5} />
+            <Brush dataKey="name" height={25} stroke="hsl(var(--primary))" fill="var(--background)" travellerWidth={15}>
                 <ComposedChart>
-                    <Area yAxisId="price" type="monotone" dataKey={priceKey.key} stroke={priceKey.color} dot={false} fill={priceKey.color} />
+                    <Area yAxisId="price" type="monotone" dataKey={priceKey.key} stroke="hsl(var(--primary))" dot={false} fill="hsl(var(--primary))" />
                 </ComposedChart>
             </Brush>
           </ComposedChart>
@@ -135,32 +145,36 @@ const SpecificChart: React.FC<SpecificChartProps> = ({ chart }) => {
           <AreaChart data={chartData}>
              <defs>
               {chart.dataKeys.map(keyInfo => (
-                <linearGradient key={`grad-${keyInfo.key}`} id={`colorGradient-${keyInfo.color}`} x1="0" y1="0" x2="0" y2="1">
+                <linearGradient key={`grad-${keyInfo.key}`} id={`colorGradient-${keyInfo.key}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor={keyInfo.color} stopOpacity={0.4}/>
                   <stop offset="95%" stopColor={keyInfo.color} stopOpacity={0}/>
                 </linearGradient>
               ))}
             </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-            <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} tick={{ fill: 'var(--muted-foreground)' }} />
-            <YAxis stroke="var(--muted-foreground)" fontSize={12} tick={{ fill: 'var(--muted-foreground)' }} />
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
             <Tooltip content={<CustomTooltip />} />
-            <Legend wrapperStyle={{fontSize: "12px", color: 'var(--muted-foreground)'}}/>
+            <Legend wrapperStyle={{fontSize: "12px", color: 'hsl(var(--muted-foreground))'}}/>
             {chart.dataKeys.map(keyInfo => (
-                <Area key={keyInfo.key} type="monotone" dataKey={keyInfo.key} name={keyInfo.name} stroke={keyInfo.color} strokeWidth={2} dot={false} fillOpacity={1} fill={`url(#colorGradient-${keyInfo.color})`} />
+                <Area key={keyInfo.key} type="monotone" dataKey={keyInfo.key} name={keyInfo.name} stroke={keyInfo.color} strokeWidth={2} dot={false} fillOpacity={1} fill={`url(#colorGradient-${keyInfo.key})`} />
             ))}
           </AreaChart>
         );
       case 'bar':
         return (
             <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-                <XAxis dataKey="name" stroke="var(--muted-foreground)" fontSize={12} tick={{ fill: 'var(--muted-foreground)' }} />
-                <YAxis stroke="var(--muted-foreground)" fontSize={12} tick={{ fill: 'var(--muted-foreground)' }} tickFormatter={formatLargeNumber} />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tick={{ fill: 'hsl(var(--muted-foreground))' }} tickFormatter={formatLargeNumber} />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{fontSize: "12px", color: 'var(--muted-foreground)'}} />
+                <Legend wrapperStyle={{fontSize: "12px", color: 'hsl(var(--muted-foreground))'}} />
                 {chart.dataKeys.map(keyInfo => (
-                    <Bar key={keyInfo.key} dataKey={keyInfo.key} name={keyInfo.name} fill={keyInfo.color} />
+                    <Bar key={keyInfo.key} dataKey={keyInfo.key} name={keyInfo.name}>
+                        {chartData.map((entry, index) => (
+                           <Cell key={`cell-${index}`} fill={Number(entry[keyInfo.key]) >= 0 ? 'hsl(var(--success))' : 'hsl(var(--danger))'} />
+                        ))}
+                    </Bar>
                 ))}
             </BarChart>
         );

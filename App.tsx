@@ -5,13 +5,14 @@ import PortfolioView from './components/PortfolioView';
 import MarketSummaryView from './components/MarketSummaryView';
 import StockChartView from './components/StockChartView';
 import EconomicIndicatorsView from './components/EconomicIndicatorsView';
-import SectorPerformanceView from './components/SectorPerformanceView';
+import CommoditiesForexView from './components/CommoditiesForexView';
 import DashboardHomeView from './components/HomeScreen';
 import LoadingScreen from './components/LoadingScreen';
 import StockScreenerPageView from './components/StockScreenerPageView';
 import NewsView from './components/NewsView';
 import LocalMarketView from './components/LocalMarketView';
 import IndexTicker from './components/IndexTicker';
+import SettingsView from './components/SettingsView';
 import type { View } from './types';
 
 const App: React.FC = () => {
@@ -45,14 +46,16 @@ const App: React.FC = () => {
         return <StockChartView initialTicker={initialTicker} />;
       case 'indicators':
         return <EconomicIndicatorsView />;
-      case 'sectors':
-        return <SectorPerformanceView />;
+      case 'commodities_forex':
+        return <CommoditiesForexView />;
       case 'screener':
         return <StockScreenerPageView />;
       case 'news':
         return <NewsView />;
       case 'local_market':
         return <LocalMarketView />;
+      case 'settings':
+        return <SettingsView />;
     }
   };
   

@@ -1,323 +1,261 @@
-import React, { useState, useEffect } from 'react';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
-import type { Portfolio, Chart } from '../types';
-import { getFinancialResponse } from '../services/geminiService';
+import React, { useState } from 'react';
+import type { Portfolio, PortfolioAsset, Chart } from '../types';
 import { useDataContext } from '../contexts/DataContext';
+import { getFinancialResponse } from '../services/geminiService';
 import SpecificChart from './SpecificChart';
 
-const COLORS = ['#D1D5DB', '#9CA3AF', '#6B7280', '#4B5563', '#374151', '#1F2937', '#3f3f46', '#52525b', '#71717a', '#a1a1aa', '#60a5fa', '#3b82f6', '#2563eb', '#1d4ed8', '#1e40af'];
+interface PortfolioViewProps {
+  portfolioData?: Portfolio;
+  isEmbeddedInChat?: boolean;
+}
 
-const PortfolioView: React.FC<{ portfolioData?: Portfolio; isEmbeddedInChat?: boolean; }> = ({ portfolioData, isEmbeddedInChat }) => {
-    const { portfolios, savePortfolio, deletePortfolio } = useDataContext();
-    const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
-    const [view, setView] = useState<'list' | 'create'>('list');
+const PortfolioAssetCard: React.FC<{ asset: PortfolioAsset }> = ({ asset }) => (
+    <div className="bg-background/60 border border-border rounded-lg p-4 transition-all hover:border-primary/50">
+        <div className="flex justify-between items-start">
+            <div>
+                <h4 className="font-bold text-md text-card-foreground">{asset.company_name}</h4>
+                <p className="text-sm font-mono text-primary">{asset.ticker}</p>
+            </div>
+            <div className="text-right">
+                <p className="text-lg font-bold text-card-foreground">{asset.allocation_percentage}%</p>
+                <p className="text-xs text-muted-foreground">Asignación</p>
+            </div>
+        </div>
+        <p className="text-sm text-muted-foreground mt-3 pt-3 border-t border-border/50">{asset.rationale}</p>
+    </div>
+);
+
+const StatCard: React.FC<{ title: string; value: string; description?: string }> = ({ title, value, description }) => (
+    <div className="bg-background/60 border border-border/50 p-4 rounded-lg">
+        <p className="text-sm font-semibold text-muted-foreground">{title}</p>
+        <p className="text-2xl font-bold mt-1 text-card-foreground">{value}</p>
+        {description && <p className="text-xs text-muted-foreground mt-1">{description}</p>}
+    </div>
+);
+
+const PortfolioDetailView: React.FC<{ portfolio: Portfolio, onDelete?: (id: string) => void }> = ({ portfolio, onDelete }) => (
+    <div className="bg-card border border-border rounded-xl p-6 animate-fadeIn">
+        <div className="flex justify-between items-start mb-6">
+            <div>
+                <h3 className="text-2xl font-bold text-card-foreground">{portfolio.strategy_name}</h3>
+                <div className="flex items-center gap-4 text-sm text-muted-foreground mt-1">
+                    <span>Capital: <strong>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(portfolio.total_capital)}</strong></span>
+                    <span className="h-4 border-l border-border"></span>
+                    <span>Riesgo: <strong>{portfolio.risk_level}</strong></span>
+                    <span className="h-4 border-l border-border"></span>
+                    <span>Horizonte: <strong>{portfolio.investment_horizon}</strong></span>
+                </div>
+            </div>
+            {onDelete && (
+                <button 
+                    onClick={() => onDelete(portfolio.id)} 
+                    className="text-muted-foreground hover:text-danger transition-colors p-2 rounded-full"
+                    aria-label="Eliminar portafolio"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </button>
+            )}
+        </div>
+        
+        <p className="bg-background/50 p-4 rounded-md text-muted-foreground mb-6 text-sm">{portfolio.strategy_rationale}</p>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 my-6">
+            {portfolio.estimated_annual_return && (
+                <StatCard title="Retorno Anual Estimado" value={portfolio.estimated_annual_return} />
+            )}
+            {portfolio.risk_analysis?.beta && (
+                <StatCard title="Beta del Portafolio" value={portfolio.risk_analysis.beta} description="vs S&P 500" />
+            )}
+            {portfolio.risk_analysis?.standard_deviation && (
+                <StatCard title="Desviación Estándar" value={portfolio.risk_analysis.standard_deviation} description="Volatilidad Anual" />
+            )}
+        </div>
+        
+        {portfolio.risk_analysis?.summary && (
+            <div className="mb-6">
+                <h4 className="font-semibold text-card-foreground mb-2">Análisis de Riesgo</h4>
+                <p className="text-sm text-muted-foreground bg-background/50 p-3 rounded-md">{portfolio.risk_analysis.summary}</p>
+            </div>
+        )}
+
+        {portfolio.charts && portfolio.charts.length > 0 && (
+            <div className="mb-6">
+                <h4 className="font-semibold text-card-foreground mb-3">{portfolio.charts[0].title}</h4>
+                <div className="bg-background/50 border border-border/50 p-2 rounded-lg h-96">
+                    <SpecificChart chart={portfolio.charts[0]} />
+                </div>
+            </div>
+        )}
+
+        <h4 className="font-semibold text-card-foreground mb-3">Activos del Portafolio</h4>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {portfolio.assets?.map((asset, index) => (
+                <PortfolioAssetCard key={index} asset={asset} />
+            ))}
+        </div>
+        {portfolio.conversational_response && <p className="text-sm text-center mt-6 text-muted-foreground italic">{portfolio.conversational_response}</p>}
+    </div>
+);
+
+const CreatePortfolioForm: React.FC = () => {
+    const { savePortfolio } = useDataContext();
+    const [strategyName, setStrategyName] = useState('');
+    const [totalCapital, setTotalCapital] = useState('10000');
+    const [riskLevel, setRiskLevel] = useState('Moderado');
+    const [investmentHorizon, setInvestmentHorizon] = useState('Largo Plazo');
+    const [country, setCountry] = useState('EEUU');
+    const [promptDetails, setPromptDetails] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
-    // Form state
-    const [portfolioName, setPortfolioName] = useState('');
-    const [capital, setCapital] = useState('10000');
-    const [risk, setRisk] = useState<'Conservador' | 'Moderado' | 'Agresivo'>('Moderado');
-    const [horizon, setHorizon] = useState<'Corto Plazo' | 'Mediano Plazo' | 'Largo Plazo'>('Largo Plazo');
-    const [numStocks, setNumStocks] = useState('10');
-    const [numEtfs, setNumEtfs] = useState('5');
-    const [description, setDescription] = useState('Enfocado en crecimiento tecnológico y empresas con sólidos fundamentales.');
-
-    if (isEmbeddedInChat && portfolioData) {
-        return <PortfolioDetailView portfolio={portfolioData} isEmbeddedInChat={true} />;
-    }
-
-    const handleGeneratePortfolio = async (e: React.FormEvent) => {
+    const handleCreatePortfolio = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!portfolioName) {
-            alert("Por favor, dale un nombre a tu portafolio.");
-            return;
-        }
         setIsLoading(true);
-        const prompt = `Crea un portafolio de $${capital} con riesgo ${risk.toLowerCase()} para un horizonte de ${horizon.toLowerCase()}, compuesto por ${numStocks} acciones y ${numEtfs} ETFs. La estrategia debe estar enfocada en: ${description}. La suma de los porcentajes de asignación debe ser exactamente 100.`;
+        setError(null);
+
+        const prompt = `Crea un portafolio de inversión con activos principalmente de ${country}, llamado "${strategyName || 'Estrategia Personalizada'}" con un capital total de $${totalCapital}, un nivel de riesgo ${riskLevel} y un horizonte de inversión a ${investmentHorizon}. Considera estas directivas adicionales: "${promptDetails || 'Enfócate en empresas líderes y ETFs diversificados.'}". Incluye un análisis de rendimiento histórico y de riesgo, además de un gráfico.`;
+
         try {
             const response = await getFinancialResponse(prompt);
             if (response.response_type === 'portfolio_creation' && response.portfolio_details) {
-                savePortfolio(response.portfolio_details, portfolioName);
-                setView('list');
+                const portfolioToSave = {
+                    ...response.portfolio_details,
+                    charts: response.charts,
+                };
+                savePortfolio(portfolioToSave, strategyName || response.portfolio_details.strategy_name);
                 // Reset form
-                setPortfolioName('');
-                setCapital('10000');
+                setStrategyName('');
+                setTotalCapital('10000');
+                setRiskLevel('Moderado');
+                setInvestmentHorizon('Largo Plazo');
+                setCountry('EEUU');
+                setPromptDetails('');
+            } else {
+                setError(response.conversational_response || "La IA no pudo generar un portafolio con esos criterios.");
             }
-        } catch (error) {
-            console.error("Failed to generate portfolio", error);
+        } catch (err) {
+            setError("Ocurrió un error al contactar a la IA. Intenta de nuevo.");
         } finally {
             setIsLoading(false);
         }
     };
-    
-    if (selectedPortfolioId) {
-        const portfolio = portfolios.find(p => p.id === selectedPortfolioId);
-        return portfolio ? <PortfolioDetailView portfolio={portfolio} onBack={() => setSelectedPortfolioId(null)} onDelete={deletePortfolio} /> : null;
-    }
 
     return (
-        <div className="p-6 h-full overflow-y-auto">
-            {view === 'list' && (
-                <div>
-                    <div className="flex justify-between items-center mb-4">
-                        <h1 className="text-3xl font-bold text-slate-200">Gestor de Portafolios</h1>
-                        <button onClick={() => setView('create')} className="bg-primary text-primary-foreground font-bold py-2 px-4 rounded-md hover:bg-blue-500 transition-colors">
-                            Crear Nuevo
-                        </button>
+        <div className="bg-card/80 border border-border rounded-xl p-5 h-full flex flex-col">
+            <h3 className="text-lg font-bold text-card-foreground mb-4 flex-shrink-0">Crear Nuevo Portafolio</h3>
+            <form onSubmit={handleCreatePortfolio} className="flex-1 flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto pr-4 -mr-4 space-y-4">
+                    <div>
+                        <label htmlFor="name" className="text-xs font-semibold text-muted-foreground">Nombre del Portafolio</label>
+                        <input id="name" type="text" value={strategyName} onChange={e => setStrategyName(e.target.value)} placeholder="Ej: Crecimiento Tecnológico" className="w-full bg-input text-sm p-2 rounded-md mt-1 focus:ring-primary focus:ring-1 focus:outline-none" />
                     </div>
-                    {portfolios.length === 0 ? (
-                        <p className="text-center text-muted-foreground mt-8">No tienes portafolios guardados. ¡Crea uno para empezar!</p>
-                    ) : (
-                        <div className="space-y-3">
-                            {portfolios.map(p => (
-                                <div key={p.id} onClick={() => setSelectedPortfolioId(p.id)} className="bg-card border border-border p-4 rounded-lg cursor-pointer hover:border-primary transition-colors">
-                                    <h2 className="font-bold text-lg text-slate-200">{p.strategy_name}</h2>
-                                    <div className="flex justify-between items-center text-sm text-muted-foreground mt-1">
-                                        <span>{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(p.total_capital)}</span>
-                                        <span>{new Date(p.created_at).toLocaleDateString()}</span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
+                    <div>
+                        <label htmlFor="country" className="text-xs font-semibold text-muted-foreground">País de Enfoque</label>
+                        <select id="country" value={country} onChange={e => setCountry(e.target.value)} className="w-full bg-input text-sm p-2 rounded-md mt-1 focus:ring-primary focus:ring-1 focus:outline-none">
+                            <option>EEUU</option>
+                            <option>Colombia</option>
+                            <option>China</option>
+                            <option>Japón</option>
+                            <option>Europa</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="capital" className="text-xs font-semibold text-muted-foreground">Capital Total (USD)</label>
+                        <input id="capital" type="number" value={totalCapital} onChange={e => setTotalCapital(e.target.value)} className="w-full bg-input text-sm p-2 rounded-md mt-1 focus:ring-primary focus:ring-1 focus:outline-none" />
+                    </div>
+                    <div>
+                        <label htmlFor="risk" className="text-xs font-semibold text-muted-foreground">Nivel de Riesgo</label>
+                        <select id="risk" value={riskLevel} onChange={e => setRiskLevel(e.target.value)} className="w-full bg-input text-sm p-2 rounded-md mt-1 focus:ring-primary focus:ring-1 focus:outline-none">
+                            <option>Conservador</option>
+                            <option>Moderado</option>
+                            <option>Agresivo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="horizon" className="text-xs font-semibold text-muted-foreground">Horizonte de Inversión</label>
+                        <select id="horizon" value={investmentHorizon} onChange={e => setInvestmentHorizon(e.target.value)} className="w-full bg-input text-sm p-2 rounded-md mt-1 focus:ring-primary focus:ring-1 focus:outline-none">
+                            <option>Corto Plazo</option>
+                            <option>Mediano Plazo</option>
+                            <option>Largo Plazo</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label htmlFor="details" className="text-xs font-semibold text-muted-foreground">Detalles Adicionales (Opcional)</label>
+                        <textarea id="details" value={promptDetails} onChange={e => setPromptDetails(e.target.value)} rows={3} placeholder="Ej: Incluir acciones de IA y un ETF del S&P 500" className="w-full bg-input text-sm p-2 rounded-md mt-1 focus:ring-primary focus:ring-1 focus:outline-none"></textarea>
+                    </div>
                 </div>
-            )}
 
-            {view === 'create' && (
-                 <div className="flex flex-col items-center justify-center">
-                    <div className="w-full max-w-lg">
-                        <div className="flex items-center gap-4 mb-4">
-                            <button onClick={() => setView('list')} className="text-muted-foreground hover:text-primary">&larr; Volver</button>
-                            <h2 className="text-2xl font-bold text-slate-200">Crear Nuevo Portafolio</h2>
-                        </div>
-                        <div className="bg-card border border-border p-8 rounded-lg animate-fadeIn">
-                             <form onSubmit={handleGeneratePortfolio} className="space-y-4">
-                                <div>
-                                    <label className="text-sm font-medium text-slate-300">Nombre del Portafolio</label>
-                                    <input type="text" value={portfolioName} onChange={e => setPortfolioName(e.target.value)} placeholder="Ej: Mi Portafolio Tec." className="mt-1 w-full bg-input text-foreground rounded-md p-2 border border-border focus:ring-2 focus:ring-primary focus:outline-none" required />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                     <div>
-                                        <label className="text-sm font-medium text-slate-300">Capital (USD)</label>
-                                        <input type="number" value={capital} onChange={e => setCapital(e.target.value)} placeholder="10000" className="mt-1 w-full bg-input text-foreground rounded-md p-2 border border-border focus:ring-2 focus:ring-primary focus:outline-none" />
-                                    </div>
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-300">Nivel de Riesgo</label>
-                                        <select value={risk} onChange={e => setRisk(e.target.value as any)} className="mt-1 w-full bg-input text-foreground rounded-md p-2 border border-border focus:ring-2 focus:ring-primary focus:outline-none">
-                                            <option>Conservador</option>
-                                            <option>Moderado</option>
-                                            <option>Agresivo</option>
-                                        </select>
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="text-sm font-medium text-slate-300">Nº de Acciones</label>
-                                        <input type="number" value={numStocks} onChange={e => setNumStocks(e.target.value)} placeholder="10" className="mt-1 w-full bg-input text-foreground rounded-md p-2 border border-border focus:ring-2 focus:ring-primary focus:outline-none" />
-                                    </div>
-                                     <div>
-                                        <label className="text-sm font-medium text-slate-300">Nº de ETFs</label>
-                                        <input type="number" value={numEtfs} onChange={e => setNumEtfs(e.target.value)} placeholder="5" className="mt-1 w-full bg-input text-foreground rounded-md p-2 border border-border focus:ring-2 focus:ring-primary focus:outline-none" />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-slate-300">Horizonte Temporal</label>
-                                    <select value={horizon} onChange={e => setHorizon(e.target.value as any)} className="mt-1 w-full bg-input text-foreground rounded-md p-2 border border-border focus:ring-2 focus:ring-primary focus:outline-none">
-                                        <option>Corto Plazo</option>
-                                        <option>Mediano Plazo</option>
-                                        <option>Largo Plazo</option>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label className="text-sm font-medium text-slate-300">Descripción de la Estrategia</label>
-                                    <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="mt-1 w-full bg-input text-foreground rounded-md p-2 border border-border focus:ring-2 focus:ring-primary focus:outline-none" />
-                                </div>
-                                <button type="submit" disabled={isLoading} className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-md hover:bg-blue-500 transition-colors disabled:opacity-50">
-                                    {isLoading ? 'Generando...' : 'Generar Portafolio'}
-                                </button>
-                            </form>
-                        </div>
-                    </div>
+                <div className="flex-shrink-0 mt-4">
+                    {error && <p className="text-xs text-danger bg-danger/10 p-2 rounded-md mb-4">{error}</p>}
+                    <button type="submit" disabled={isLoading} className="w-full bg-primary text-primary-foreground font-bold py-2.5 rounded-lg hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                        {isLoading ? 'Creando...' : 'Crear Portafolio con IA'}
+                    </button>
                 </div>
-            )}
+            </form>
         </div>
     );
 };
 
-const PortfolioDetailView: React.FC<{portfolio: Portfolio, onBack?: () => void, onDelete?: (id: string) => void, isEmbeddedInChat?: boolean}> = ({ portfolio, onBack, onDelete, isEmbeddedInChat = false }) => {
-    const [performanceCharts, setPerformanceCharts] = useState<Chart[] | null>(null);
-    const [isChartsLoading, setIsChartsLoading] = useState(true);
 
-    useEffect(() => {
-        const fetchPerformanceData = async () => {
-            if (!portfolio.assets || portfolio.assets.length === 0) {
-                setIsChartsLoading(false);
-                return;
-            }
+const PortfolioView: React.FC<PortfolioViewProps> = ({ portfolioData, isEmbeddedInChat = false }) => {
+  const { appData, deletePortfolio } = useDataContext();
+  const { portfolios } = appData;
+  const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
 
-            setIsChartsLoading(true);
-            setPerformanceCharts(null);
-            const assetsString = portfolio.assets.map(a => `${a.ticker}: ${a.allocation_percentage}%`).join(', ');
-            const prompt = `Dado un portafolio con los siguientes activos y asignaciones: ${assetsString}. 
-            Por favor, genera dos gráficos basados en datos reales y estimaciones razonables:
-            1.  Un gráfico de líneas titulado "Crecimiento Histórico (1A)" que muestre el rendimiento ponderado de este portafolio durante el último año. Utiliza datos históricos reales para cada activo. El 'dataKey' debe ser 'Crecimiento' y el color '#3b82f6'.
-            2.  Un gráfico de barras titulado "CAGR Estimado" que muestre la Tasa de Crecimiento Anual Compuesta estimada para los próximos 5, 10 y 15 años. El 'dataKey' debe ser 'CAGR' y el color '#6B7280'.
-            Responde únicamente con un objeto JSON que contenga un array llamado "charts" con los dos gráficos solicitados.`;
-
-            try {
-                const response = await getFinancialResponse(prompt);
-                if (response.charts && response.charts.length > 0) {
-                    setPerformanceCharts(response.charts);
-                }
-            } catch (error) {
-                console.error("Failed to fetch portfolio performance charts", error);
-            } finally {
-                setIsChartsLoading(false);
-            }
-        };
-
-        fetchPerformanceData();
-    }, [portfolio]);
-   
-    const handleExport = () => {
-        let textContent = `Estrategia de Portafolio: ${portfolio.strategy_name}\n\n`;
-        textContent += `Capital Total: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(portfolio.total_capital)}\n`;
-        textContent += `Nivel de Riesgo: ${portfolio.risk_level}\n`;
-        textContent += `Horizonte de Inversión: ${portfolio.investment_horizon}\n\n`;
-        textContent += `Justificación de la Estrategia:\n${portfolio.strategy_rationale}\n\n`;
-        textContent += "Activos del Portafolio:\n";
-        portfolio.assets?.forEach(asset => {
-            textContent += `- ${asset.company_name} (${asset.ticker}): ${asset.allocation_percentage}%\n`;
-            textContent += `  Justificación: ${asset.rationale}\n`;
-        });
-        
-        const blob = new Blob([textContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `portafolio_${portfolio.strategy_name.replace(/\s/g, '_')}.txt`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
-
-    const handleDelete = () => {
-        if (onDelete && window.confirm(`¿Estás seguro de que quieres eliminar el portafolio "${portfolio.strategy_name}"?`)) {
-            onDelete(portfolio.id);
-        }
-    }
-
-    const chartData = portfolio.assets?.map(asset => ({
-        name: asset.ticker,
-        value: asset.allocation_percentage
-    })) || [];
+  if (isEmbeddedInChat && portfolioData) {
+    return <PortfolioDetailView portfolio={portfolioData} />;
+  }
   
-    const CustomTooltipContent = ({ active, payload }: any) => {
-        if (active && payload && payload.length) {
-        const data = payload[0].payload;
-        return (
-            <div className="bg-popover text-popover-foreground p-2 border border-border rounded-md shadow-lg">
-            <p className="font-bold">{`${data.name}: ${data.value.toFixed(2)}%`}</p>
-            </div>
-        );
-        }
-        return null;
-    };
+  const selectedPortfolio = portfolios.find(p => p.id === selectedPortfolioId) || (portfolios.length > 0 ? portfolios[0] : null);
 
-    const containerPadding = isEmbeddedInChat ? 'p-0' : 'p-6';
-    
-    return (
-        <div className={`space-y-4 ${containerPadding} overflow-y-auto h-full`}>
-            {!isEmbeddedInChat && onBack && (
-                 <div className="flex justify-between items-center">
-                    <button onClick={onBack} className="text-muted-foreground hover:text-primary flex items-center gap-2">&larr; Volver al Gestor</button>
-                    <div className="flex gap-2">
-                        <button onClick={handleExport} className="text-xs font-medium text-muted-foreground hover:text-primary transition-colors flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
-                            Exportar
-                        </button>
-                         <button onClick={handleDelete} className="text-xs font-medium text-muted-foreground hover:text-danger transition-colors flex items-center gap-1">
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                            Eliminar
-                        </button>
-                    </div>
-                 </div>
-            )}
-            {portfolio.conversational_response && <p className="text-lg text-slate-300">{portfolio.conversational_response}</p>}
-            
-            <div className="bg-card border border-border p-5 rounded-lg">
-                <h2 className="text-2xl font-bold mb-2 text-card-foreground">{portfolio.strategy_name}</h2>
-                <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground mb-4">
-                    <span><strong>Capital:</strong> <span className="text-slate-300">{new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(portfolio.total_capital)}</span></span>
-                    <span><strong>Riesgo:</strong> <span className="text-slate-300">{portfolio.risk_level}</span></span>
-                    <span><strong>Horizonte:</strong> <span className="text-slate-300">{portfolio.investment_horizon}</span></span>
-                </div>
-                
-                <p className="text-slate-300 mb-6 leading-relaxed">{portfolio.strategy_rationale}</p>
-                
-                <div className="grid lg:grid-cols-5 gap-6 items-start">
-                    <div className="lg:col-span-2 bg-background/50 border border-border/50 p-4 rounded-lg">
-                        <h3 className="text-lg font-semibold mb-2 text-card-foreground text-center">Asignación de Activos</h3>
-                        <div className="w-full h-80">
-                            <ResponsiveContainer>
-                                <PieChart>
-                                    <Pie data={chartData} cx="50%" cy="50%" innerRadius={70} outerRadius={110} fill="#8884d8" paddingAngle={2} dataKey="value" nameKey="name">
-                                        {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke={'var(--card)'} />)}
-                                    </Pie>
-                                    <Tooltip content={<CustomTooltipContent />} />
-                                </PieChart>
-                            </ResponsiveContainer>
-                        </div>
-                    </div>
-                    <div className="lg:col-span-3">
-                        <h3 className="text-lg font-semibold mb-4 text-card-foreground">Activos del Portafolio</h3>
-                        <div className="space-y-3">
-                            {portfolio.assets?.map((asset, index) => (
-                                <div key={index} className="bg-background/50 border border-border/50 p-3 rounded-md">
-                                    <div className="flex justify-between items-center font-bold">
-                                        <span className="text-slate-200">{asset.company_name} ({asset.ticker})</span>
-                                        <span className="text-primary">{asset.allocation_percentage}%</span>
-                                    </div>
-                                    <p className="text-sm text-muted-foreground mt-1">{asset.rationale}</p>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                </div>
+  return (
+    <div className="p-6 h-full flex flex-col">
+        <header className="mb-6 flex-shrink-0">
+            <h2 className="text-2xl font-bold text-card-foreground">Gestor de Portafolios</h2>
+            <p className="text-muted-foreground">Crea, visualiza y gestiona tus estrategias de inversión.</p>
+        </header>
 
-                <div className="mt-6 pt-6 border-t border-border/50">
-                    <h3 className="text-lg font-semibold mb-4 text-card-foreground">Análisis de Rendimiento</h3>
-                    {isChartsLoading ? (
-                        <div className="flex items-center justify-center h-48 text-muted-foreground">
-                            <div className="flex items-center space-x-2">
-                                <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                                <span>Calculando rendimiento histórico y proyecciones...</span>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 flex-1 overflow-hidden">
+            <aside className="lg:col-span-1 h-full">
+                <CreatePortfolioForm />
+            </aside>
+            <main className="lg:col-span-2 flex flex-col overflow-hidden">
+                 {portfolios.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full bg-card/50 border-2 border-dashed border-border rounded-xl text-center p-4">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-16 w-16 text-muted-foreground mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                        <h3 className="text-xl font-semibold text-card-foreground">No tienes portafolios guardados</h3>
+                        <p className="text-muted-foreground mt-1">Usa el formulario de la izquierda para crear tu primera estrategia de inversión.</p>
+                    </div>
+                ) : (
+                     <div className="flex flex-col gap-6 flex-1 overflow-hidden">
+                        <div className="w-full bg-card/80 border border-border rounded-xl p-4 overflow-y-auto flex-shrink-0">
+                            <h4 className="font-semibold mb-3 px-2 text-card-foreground">Mis Portafolios</h4>
+                            <div className="space-y-2">
+                                {portfolios.map(p => (
+                                    <button
+                                        key={p.id}
+                                        onClick={() => setSelectedPortfolioId(p.id)}
+                                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${selectedPortfolio?.id === p.id ? 'bg-primary/20 text-primary' : 'hover:bg-muted/50'}`}
+                                    >
+                                        <p className="font-semibold text-sm">{p.strategy_name}</p>
+                                        <p className="text-xs text-muted-foreground">{new Date(p.created_at).toLocaleDateString()}</p>
+                                    </button>
+                                ))}
                             </div>
                         </div>
-                    ) : (
-                        <div className="grid lg:grid-cols-1 xl:grid-cols-2 gap-6">
-                            {performanceCharts && performanceCharts.length > 0 ? (
-                                performanceCharts.map((chart, index) => (
-                                    <div key={index} className="bg-background/50 border border-border/50 p-4 rounded-lg">
-                                        <h4 className="font-semibold text-card-foreground mb-3 text-center">{chart.title}</h4>
-                                        <div className="h-80">
-                                            <SpecificChart chart={chart} />
-                                        </div>
-                                    </div>
-                                ))
+                        <div className="flex-1 overflow-y-auto">
+                            {selectedPortfolio ? (
+                                <PortfolioDetailView portfolio={selectedPortfolio} onDelete={deletePortfolio} />
                             ) : (
-                                <div className="xl:col-span-2 text-center p-8 text-muted-foreground">
-                                    No se pudo cargar el análisis de rendimiento para este portafolio.
-                                </div>
+                                <div className="flex items-center justify-center h-full text-muted-foreground">Selecciona un portafolio para ver los detalles.</div>
                             )}
                         </div>
-                    )}
-                </div>
-            </div>
+                    </div>
+                )}
+            </main>
         </div>
-    );
-}
+    </div>
+  );
+};
 
 export default PortfolioView;

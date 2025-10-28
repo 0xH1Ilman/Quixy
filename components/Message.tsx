@@ -1,12 +1,13 @@
 import React from 'react';
-import type { Message as MessageType } from '../types';
+import type { Message as MessageType, ApiResponse } from '../types';
 import AnalysisCard from './AnalysisCard';
 import PortfolioView from './PortfolioView';
 import MarketSummaryView from './MarketSummaryView';
 import StockScreenerView from './StockScreenerView';
 import EconomicIndicatorsView from './EconomicIndicatorsView';
-import SectorPerformanceView from './SectorPerformanceView';
+import CommoditiesForexView from './CommoditiesForexView';
 import { useDataContext } from '../contexts/DataContext';
+import BrandLogo from './QuixyLogo';
 
 interface MessageProps {
   message: MessageType;
@@ -29,7 +30,11 @@ const Message: React.FC<MessageProps> = ({ message }) => {
     if (message.analysis?.portfolio_details) {
       const name = prompt("Dale un nombre a este portafolio:", message.analysis.portfolio_details.strategy_name);
       if (name) {
-        savePortfolio(message.analysis.portfolio_details, name);
+        const portfolioToSave = {
+          ...message.analysis.portfolio_details,
+          charts: message.analysis.charts,
+        };
+        savePortfolio(portfolioToSave, name);
         alert(`Portafolio "${name}" guardado exitosamente.`);
       }
     }
@@ -37,11 +42,7 @@ const Message: React.FC<MessageProps> = ({ message }) => {
 
   const renderContent = () => {
     if (message.isLoading) {
-      return (
-        <div className="flex items-center space-x-3 animate-fadeIn">
-            <LoadingIndicator />
-        </div>
-      );
+      return <LoadingIndicator />;
     }
 
     if (message.analysis) {
@@ -72,30 +73,33 @@ const Message: React.FC<MessageProps> = ({ message }) => {
           return message.analysis.economic_indicators ? (
             <EconomicIndicatorsView isEmbeddedInChat={true} />
           ) : null;
-        case 'sector_performance':
-          return message.analysis.sector_performance ? (
-            <SectorPerformanceView isEmbeddedInChat={true} />
+        case 'commodities_forex':
+          return message.analysis.commodities_forex ? (
+            <CommoditiesForexView isEmbeddedInChat={true} />
           ) : null;
         case 'general_text':
         default:
           return (
-             <div className="flex items-start space-x-3">
-              <div className="bg-card px-4 py-3 rounded-lg text-card-foreground">
-                  <p>{message.analysis.conversational_response}</p>
-              </div>
-            </div>
+             <div className="bg-card px-4 py-3 rounded-xl text-card-foreground">
+                <p>{message.analysis.conversational_response}</p>
+             </div>
           );
       }
     }
 
-    return <p>{message.text}</p>;
+    return <p className="text-white">{message.text}</p>;
   };
 
   return (
-    <div className={`flex ${isBot ? 'justify-start' : 'justify-end'}`}>
+    <div className={`flex animate-slideUpAndFadeIn items-start gap-3 ${isBot ? 'justify-start' : 'justify-end'}`}>
+       {isBot && (
+         <div className="w-8 h-8 flex-shrink-0 bg-card rounded-full flex items-center justify-center border border-border">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="text-primary"><path d="M5.63604 18.364L12 12M18.364 5.63604L12 12M12 12L5.63604 5.63604M12 12L18.364 18.364M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+         </div>
+       )}
       <div
-        className={`max-w-4xl w-full p-0 ${
-          isBot ? '' : 'bg-gradient-to-br from-blue-600 to-blue-500 text-primary-foreground p-4 rounded-xl shadow-lg'
+        className={`max-w-3xl w-full ${
+          !isBot && 'bg-gradient-to-br from-blue-600 to-blue-500 text-primary-foreground p-4 rounded-xl shadow-lg'
         }`}
       >
         {renderContent()}

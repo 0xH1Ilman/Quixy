@@ -11,8 +11,8 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<Theme>(() => {
-    const savedTheme = localStorage.getItem('quixy-theme') as Theme;
-    return savedTheme || 'high-contrast';
+    const savedTheme = localStorage.getItem('brightstone-finance-theme') as Theme;
+    return savedTheme || 'dark';
   });
 
   useEffect(() => {
@@ -21,7 +21,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     root.classList.remove('light', 'dark', 'high-contrast');
     root.classList.add(theme);
     
-    localStorage.setItem('quixy-theme', theme);
+    localStorage.setItem('brightstone-finance-theme', theme);
   }, [theme]);
 
   const value = useMemo(() => ({ theme, setTheme }), [theme]);
@@ -29,6 +29,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <ThemeContext.Provider value={value}>
       {children}
+    {/* Fix: Corrected typo in closing tag from Theme.Provider to ThemeContext.Provider to match the opening tag. */}
     </ThemeContext.Provider>
   );
 };
